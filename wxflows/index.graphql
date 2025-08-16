@@ -1,0 +1,13 @@
+schema
+  @sdl(
+    files: [
+      "tools.graphql"
+      "flyhotel/index.graphql"
+      "flyhotelurl/index.graphql"
+      "charterrejse/index.graphql"
+      "bookingdeals/index.graphql"
+      "kunfly/index.graphql"
+    ]
+  ) {
+  query: Query
+}

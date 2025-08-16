@@ -1,0 +1,44 @@
+type Query {
+  """
+    Use this service to receive a list of possible traveling destinations from an airport using IATA-Airport codes.
+    
+    USAGE:
+    Call destinationsAvailableFromOrigin with a required 'origin' parameter containing the IATA airport code.
+    Remember to insert the 'origin' as a 'variable'.
+
+    EXAMPLE OF IATA CODES:
+    - Copenhagen = CPH
+    - Billund = BLL
+    - Aalborg = AAL
+    - Aarhus = AAR
+            
+    Always provide the origin parameter as a string with the IATA airport code.
+    """
+  destinationsAvailableFromOrigin(origin: String!): [String]
+  @rest(
+    endpoint: "https://wp.tripx.eu/wp-json/tripx/v1/origin-destinations/$origin?frontDomain=book.rejsespejder.dk&countryCode=dk"
+  )
+
+  """
+    Use this service to receive a list of possible origin airports/IATA codes that can fly to a specific destination.
+    
+    USAGE:
+    Call originsAvailableToDestination with a required 'destination' parameter containing the IATA airport code.
+    Remember to insert the 'destination' as a variable.
+    
+    EXAMPLE OF IATA CODES:
+    - Copenhagen = CPH
+    - Billund = BLL
+    - Aalborg = AAL
+
+    EXAMPLE USAGE:
+    originsAvailableToDestination(destination: "LHR")
+    
+    This will return all airports from which you can fly to London Heathrow.
+    Always provide the destination parameter as a string with the IATA airport code.
+  """
+  originsAvailableFromDestination(destination: String!): [String]
+  @rest(
+    endpoint: "https://wp.tripx.eu/wp-json/tripx/v1/destination-origins/$destination?frontDomain=book.rejsespejder.dk&countryCode=dk"
+  )
+}

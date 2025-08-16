@@ -1,0 +1,45 @@
+type BookingDeal {
+    title: String!
+    excerpt: String!
+    url: String!
+    image: String
+    price: String!
+    date: String!
+    categories: [String!]
+    tags: [String!]
+    airports: [String!]
+    destinations: [String!]
+    months: [String!]
+  }
+
+type Query {
+  """
+    Use this query to get available travel deals and offers of any kinds in the current timeperiod.
+    - This query is for those seeking a good offer on travels of any kinds.
+    - startDate is not the desired date the customer wants to travel it should always be set to yesterday or a week before of the present date.
+    - endDate should at most be to the end of the month.
+
+    EXAMPLE USAGE:
+      query { 
+        bookingDeals(
+          startDate: "2025-07-01"
+          fromDate: "2025-07-31"
+        ) {
+          title
+          url
+          price
+          excerpt
+          date
+          categories
+          destinations
+        }
+      }
+      variables: {}
+
+    based on the request and the information available, return a couple of the urls you think the user would find relevant
+  """
+  bookingDeals(startDate: String!, endDate: String!): [BookingDeal]
+  @rest(
+    endpoint: "https://rejsespejder.dk/wp-json/rejsespejder/v1/deals?startDate=$startDate&endDate=$endDate"
+  )
+}

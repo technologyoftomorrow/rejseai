@@ -1,0 +1,202 @@
+extend type Query {
+  flyhotel: TC_GraphQL
+    @supplies(query: "tc_tools")
+    @materializer(
+      query: "tc_graphql_tool"
+      arguments: [
+        { name: "name", const: "flyhotel" }
+        { 
+          name: "description",
+          const: """
+            Use this tool to find flight destinations and origins using IATA airport codes.
+            
+            IMPORTANT: 
+            - DO NOT use GraphQL variables - embed values directly in the query
+            - ALWAYS set variables to "{}" (empty JSON object)
+            
+            For destinations from an airport:
+            query { destinationsAvailableFromOrigin(origin: "CPH") }
+            variables: {}
+            
+            For origins to a destination:
+            query { originsAvailableFromDestination(destination: "BCN") }
+            variables: {}
+            
+            Common IATA codes:
+            - Copenhagen = CPH
+            - Barcelona = BCN
+            - London = LON
+            - Paris = PAR
+          """
+        }
+        { name: "fields", const: "destinationsAvailableFromOrigin|originsAvailableFromDestination" }
+      ]
+    )
+
+  flyhotelurl: TC_GraphQL
+  @supplies(query: "tc_tools")
+  @materializer(
+    query: "tc_graphql_tool"
+    arguments: [
+      { name: "name", const: "flyhotelurl" }
+      {
+          name: "description", 
+          const: """
+            Generate booking URLs for package holidays with combined flight and hotel based on conversation context.
+            
+            URL PARAMETERS:
+            - origins: IATA departure airport (e.g., CPH, BLL, AAL)
+            - destinations: IATA destination airport (can be empty for open destination)
+            - offerFrom: Search start date (YYYY-MM-DD)
+            - offerTo: Search end date (YYYY-MM-DD)
+            - rooms: Room configuration (default "2" for 2 adults)
+            - numberOfDays: Trip length range "min,max" (e.g., "4,14")
+            
+            EXAMPLE ROOM CONFIGURATION:
+            - "2" = 2 adults in 1 room
+            - "2-4" = 2 adults + 1 child (age 4) in 1 room
+            - "2,1" = 2 rooms: first=2 adults, second=1 adult
+            
+            EXAMPLE USAGE:
+            query { 
+              generateFlyhotelUrl(
+                origins: "CPH"
+                destinations: "BCN"
+                offerFrom: "2025-07-01"
+                offerTo: "2025-07-31"
+                rooms: "2"
+                numberOfDays: "7,14"
+              ) 
+            }
+            variables: {}
+        
+            For open destinations, set destinations to "" (empty string).
+            Always embed values directly - NO GraphQL variables!
+          """
+        }
+        { name: "fields", const: "generateFlyhotelUrl" }
+    ]
+  )
+
+  charterrejse: TC_GraphQL
+  @supplies(query: "tc_tools")
+   @materializer(
+    query: "tc_graphql_tool"
+    arguments: [
+      { name: "name", const: "charterrejse" }
+      { 
+          name: "description", 
+          const:
+            """
+            Generate URL with charter booking offers based on destinationCode.
+
+            STEP 1: Find destination codes for charterBooking URLs.
+  
+            Use charterBooking FIRST to get the nDestinationCodeID for your desired destination.
+  
+            Example: charterBooking(destination: "Mallorca") returns JSON strings like:
+            {"destinationCountry":"Spanien","nCountryCodeID":"500347","destination":"Mallorca","nDestinationCodeID":"501354"}
+  
+            IMPORTANT: Parse the JSON response and extract the "nDestinationCodeID" value (e.g. "501354")
+            This code is required for the charterBookingURL query.
+
+            STEP 2: Generate booking URL using destinationCode from Step 1.
+  
+            REQUIRED: Use the "nDestinationCodeID" or "nCountryCodeID" value from charterBooking response as destinationCode.
+  
+            Example workflow:
+            1. Call charterBooking(destination: "Mallorca") 
+            2. Parse response to get nDestinationCodeID: "501354"
+            3. Call charterBookingURL(destinationCode: "501354", departure: "København", ...)
+            
+            Available parameters for CharterBookingUrl:
+              - destinationCode: String! (required - use nDestinationCodeID from charterBooking)
+              - departure: String! (required - "København", "Aalborg", "Aarhus", "Billund", "Hamburg")
+              - departureDate: String (optional - format "YYYY-MM-DD")
+              - minDays: Int (optional - minimum trip duration, default 7)
+              - maxDays: Int (optional - maximum trip duration, default 14)
+              - flexDays: Int (optional - flexibility in days, default 7)
+              - travelType: String (optional - "package", "flight", "hotel", default "package")
+              - allInclusive: Boolean (optional - default false)
+
+            DO NOT add any parameters not listed above.
+          """
+        }
+      { name: "fields", const: "charterBooking|charterBookingUrl" }
+    ]
+  )
+
+  deals: TC_GraphQL
+  @supplies(query: "tc_tools")
+  @materializer(
+    query: "tc_graphql_tool"
+    arguments: [
+      { name: "name", const: "deals" }
+      { 
+        name: "description", 
+        const:
+          """
+          Use this query to get available travel deals and offers of any kinds in the current timeperiod.
+          - This query is for those seeking a good offer on travels of any kinds.
+
+          query { 
+            bookingDeals(
+              startDate: "2025-07-01"
+              fromDate: "2025-07-31"
+            ) {
+              title
+              url
+              price
+              excerpt
+              date
+              categories
+              destinations
+            }
+          }
+          variables: {}
+
+          based on the request and the information available, return a couple of the urls you think the user would find relevant
+          """
+      }
+      { name: "fields", const: "bookingDeals" }
+    ]
+  )
+
+  kunfly: TC_GraphQL
+  @supplies(query: "tc_tools")
+  @materializer(
+    query: "tc_graphql_tool"
+    arguments: [
+      { name: "name", const: "kunfly" }
+      { 
+        name: "description", 
+        const:
+          """
+            Generate booking URLs for flight tickets only, based on conversation context.
+
+            Use this query to make and return urls with relevant flight offers.
+
+            REQUIRED PARAMETERS:
+            - origin: IATA departure airport code (get connection from flyhotel tool results)
+            - destination: IATA airport code (get connection from flyhotel tool results)
+            - fromDate: Travel period start date (YYYY-MM-DD)
+            - toDate: Travel period end date (YYYY-MM-DD)
+
+            EXAMPLE USAGE:
+            query { 
+              generateFlightOnlyUrl(
+                origin: "CPH"
+                destination: "BCN"
+                fromDate: "2025-07-01"
+                toDate: "2025-07-31"
+              ) 
+            }
+            variables: {}
+
+            return the url to the user.
+          """
+      }
+      { name: "fields", const: "generateFlightOnlyUrl" }
+    ]
+  )
+}

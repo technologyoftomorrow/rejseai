@@ -1,0 +1,94 @@
+type Query {
+  """
+    Generate Rejsespejder package holiday search URLs with correct Danish format.
+    
+    USAGE:
+    Creates search URLs for Rejsespejder's package booking system.
+    Use after gathering travel preferences from user conversation.
+    
+    REQUIRED PARAMETERS:
+    - origins: IATA departure airport code (use flyhotel tool results)
+    - offerFrom: Travel period start date (YYYY-MM-DD)
+    - offerTo: Travel period end date (YYYY-MM-DD)
+    
+    OPTIONAL PARAMETERS:
+    - destinations: IATA destination airport (use "" for open/flexible destination)
+    - rooms: Room configuration string (default: "2" for 2 adults)
+    - numberOfDays: Trip duration range as "min,max" days (use default: "4,14")
+    
+    ROOM CONFIGURATION EXAMPLES:
+    - "2" = 1 room with 2 adults (default)
+    - "2-6" = 1 room with 2 adults and 1 child (age 6)
+    - "2-6-4" = 1 room with 2 adults and 2 children (ages 6 and 4)
+    - "2,2" = 2 rooms, each with 2 adults
+    - "2-8,1" = 2 rooms: first=2 adults+child(8), second=1 adult
+    
+    TRIP DURATION EXAMPLES:
+    - "7,7" = exactly 7 days
+    - "4,14" = between 4 and 14 days (flexible)
+    - "10,21" = between 10 and 21 days
+    
+    EXAMPLE CALLS:
+    
+    # Specific destination
+    generateRejsespejderUrl(
+      origins: "CPH"
+      destinations: "BCN"
+      offerFrom: "2025-08-01"
+      offerTo: "2025-08-31"
+      rooms: "2-6"
+      numberOfDays: "7,14"
+    )
+    
+    # Open destination (explore anywhere)
+    generateRejsespejderUrl(
+      origins: "CPH"
+      destinations: ""
+      offerFrom: "2025-07-01"
+      offerTo: "2025-07-31"
+      rooms: "2"
+      numberOfDays: "4,14"
+    )
+    
+    Returns complete URL ready for user to click and search packages.
+  """
+  generateFlyhotelUrl(
+    origins: String!
+    offerFrom: String!
+    offerTo: String!
+    destinations: String = ""
+    rooms: String = "2"
+    numberOfDays: String = "4,14"
+  ): String
+  @rest(
+    endpoint: "stepzen:empty",
+    ecmascript: """
+      function transformREST(s) {
+        // Hent argumenter fra query
+        const origins = get("origins");
+        const destinations = get("destinations") || "";
+        const offerFrom = get("offerFrom");
+        const offerTo = get("offerTo");
+        const rooms = get("rooms") || "2";
+        const numberOfDays = get("numberOfDays") || "4,14";
+        
+        // Validering - brug default værdier i stedet for at returnere null
+        if (!origins || !offerFrom || !offerTo) {
+          return JSON.stringify("https://book.rejsespejder.dk/sog");
+        }
+        
+        // Konstruer URL
+        const baseUrl = "https://book.rejsespejder.dk/sog";
+        const url = baseUrl + "?origins=" + origins + 
+                    "&destinations=" + destinations + 
+                    "&offerFrom=" + offerFrom + 
+                    "&offerTo=" + offerTo + 
+                    "&rooms=" + rooms + 
+                    "&numberOfDays=" + numberOfDays;
+        
+        // Da returtypen er String, returnerer vi kun URL'en
+        return JSON.stringify(url);
+      }
+    """
+  )
+}

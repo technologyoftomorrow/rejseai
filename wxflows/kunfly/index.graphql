@@ -1,0 +1,37 @@
+type Query {
+  """
+    Use this query to make urls with flight offers.
+
+    REQUIRED PARAMETERS:
+    - origin: IATA departure airport code (get connection from flyhotel tool results)
+    - destination: IATA airport code (get connection from flyhotel tool results)
+    - fromDate: Travel period start date (YYYY-MM-DD)
+    - toDate: Travel period end date (YYYY-MM-DD)
+
+  """
+  generateFlightOnlyUrl(
+    origin: String!
+    destination: String!
+    fromDate: String!
+    toDate: String!
+  ): String
+  @rest(
+    endpoint: "stepzen:empty",
+    ecmascript: 
+    """
+      function transformREST(s) {
+        // Hent argumenter fra query
+        const origin = get("origin");
+        const destination = get("destination");
+        const fromDate = get("fromDate");
+        const toDate = get("toDate");
+
+        const baseUrl = "https://rejsespejder.dk/flybilletter/#/flights";
+        const url = baseUrl + "/" + origin + "-" + destination + "/" + fromDate + "/" + toDate + "/1adults/?sort=bestflight_a";
+
+        // Da returtypen er String, returnerer vi kun URL'en
+        return JSON.stringify(url);
+        }
+    """
+  )
+}

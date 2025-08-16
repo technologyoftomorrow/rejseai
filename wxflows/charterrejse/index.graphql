@@ -1,0 +1,131 @@
+type Query {
+  """
+  Helper function to find available destinations before generating booking URLs.
+  Get the relevant DestinationCodeID based on destinations from CSV data.
+  
+  - Read the destination codes from Google Sheets CSV and get the DestinationCodeID matching the users request.
+  - Uses nCountryCodeID for countries, nDestinationCodeID for specific destinations.
+  - Find and return the relevant code for the desired destination
+  """
+  charterBooking(destination: String!): [String]
+  @rest(
+    endpoint: "https://docs.google.com/spreadsheets/d/1Yr78kxZcrlNjoEEVLA2EE9wslM_D-kqkuAR1NDIuSK4/gviz/tq?tqx=out:csv"
+    ecmascript: """
+      function transformREST(s) {
+        const destination = get("destination");
+        
+        // Debug: Se hvad vi får
+        if (!s || s.length === 0) {
+          return JSON.stringify(["tom response"]);
+        }
+        
+        const csvData = s;
+        const lines = csvData.trim().split('\n');
+        
+        // Debug: Antal linjer
+        if (lines.length < 2) {
+          return JSON.stringify([`kun ${lines.length} linjer`]);
+        }
+        
+        const headers = lines[0].split(',').map(header => header.replace(/"/g, '').trim());
+        const results = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(value => value.replace(/"/g, '').trim());
+          const row = {};
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+          });
+          
+          // Filtrer baseret på destination
+          const rowContainsDestination = Object.values(row).some(value => 
+            value.toLowerCase().includes(destination.toLowerCase())
+          );
+          
+          if (rowContainsDestination) {
+            results.push(JSON.stringify(row));
+          }
+        }
+        
+        return JSON.stringify(results);
+      }
+    """
+  )
+  """
+  Generate Rejsespejder charter booking URL based on destinationCode.
+  """
+  charterBookingURL(
+    destinationCode: String!
+    departure: String!
+    departureDate: String
+    minDays: Int
+    maxDays: Int
+    flexDays: Int
+    travelType: String
+    allInclusive: Boolean
+  ): String
+  @rest(
+    endpoint: "stepzen:empty",
+    ecmascript: """
+      function transformREST(s) {
+        const destinationCode = get("destinationCode");
+        const departure = get("departure");
+        const departureDate = get("departureDate") || "";
+        const minDays = get("minDays") || 7;
+        const maxDays = get("maxDays") || 14;
+        const flexDays = get("flexDays") || 7;
+        const travelType = get("travelType") || "package";
+        const allInclusive = get("allInclusive") || false;
+
+        if (!destinationCode || !departure) {
+          return JSON.stringify("ERROR: Destination and departure are required");
+        }
+
+        const departureCodes = {
+          "Aalborg": "503274",
+          "Aarhus": "503278", 
+          "Billund": "499708",
+          "Hamburg": "500641",
+          "København": "500055"
+        };
+        
+        const departureCode = departureCodes[departure];
+        if (!departureCode) {
+          return JSON.stringify("ERROR: Invalid departure location");
+        }
+        
+        const travelTypeCodes = {
+          "flight": "1",
+          "package": "2",
+          "hotel": "3", 
+          "package+hotel": "2,3"
+        };
+        
+        const specificationIds = travelTypeCodes[travelType] || "2";
+        
+        let url = "https://rejsespejder.dk/charterrejser-results/?";
+        const params = [];
+        
+        if (departureDate) {
+          params.push("ddeparturedate=" + departureDate);
+        }
+        
+        params.push("nDestinationCodeID=" + destinationCode);
+        params.push("nminduration=" + minDays);
+        params.push("nmaxduration=" + maxDays);
+        params.push("nflexdays=" + flexDays);
+        params.push("ldepartureids=" + departureCode);
+        params.push("lspecificationids=" + specificationIds);
+        params.push("ldestinationtypeids=1");
+        
+        if (allInclusive) {
+          params.push("lmealtypeids=7");
+        }
+        
+        url += params.join("&");
+        
+        return JSON.stringify(url);
+      }
+    """
+  )
+}

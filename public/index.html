@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat med Logs</title>
+  <!-- Tilføj marked.js til markdown-parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #2563eb;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-top: -0.5rem;
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+    }
+    
+    /* Layout container */
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 1rem;
+      height: calc(100vh - 120px);
+      min-height: 600px;
+    }
+    
+    /* Chat container */
+    .chat-container {
+      background-color: #f3f4f6;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      min-height: 0; /* Vigtig for grid overflow */
+    }
+    
+    /* Logs container */
+    .logs-container {
+      background-color: #1f2937;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      min-height: 0; /* Vigtig for grid overflow */
+      max-height: 100%; /* Sørg for at den ikke vokser udenfor grid */
+    }
+    
+    .logs-header {
+      color: #f9fafb;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logs-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .log-btn {
+      background-color: #374151;
+      color: #f9fafb;
+      border: none;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .log-btn:hover {
+      background-color: #4b5563;
+    }
+    
+    .log-btn.active {
+      background-color: #059669;
+    }
+    
+    #logs {
+      background-color: #111827;
+      border-radius: 4px;
+      padding: 1rem;
+      overflow-y: auto;
+      overflow-x: hidden; /* Forhindrer horisontal scroll */
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: #d1d5db;
+      flex: 1;
+      white-space: pre-wrap;
+      word-wrap: break-word; /* Bryd lange linjer */
+      border: 1px solid #374151;
+      min-height: 0; /* Tillader flex shrinking */
+      height: 100%; /* Fylder tilgængelig plads */
+    }
+    
+    /* Log styling */
+    .log-entry {
+      margin-bottom: 0.25rem;
+      padding: 0.1rem 0;
+    }
+    
+    .log-timestamp {
+      color: #6b7280;
+      font-size: 0.7rem;
+    }
+    
+    .log-level-info { color: #60a5fa; }
+    .log-level-warn { color: #fbbf24; }
+    .log-level-error { color: #f87171; }
+    .log-level-success { color: #34d399; }
+    .log-level-debug { color: #a78bfa; }
+    
+    /* Chat styles */
+    #chat {
+      background-color: white;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      overflow-y: auto;
+      overflow-x: hidden; /* Forhindrer horisontal scroll */
+      border: 1px solid #e5e7eb;
+      flex: 1;
+      min-height: 0; /* Tillader flex shrinking */
+    }
+    
+    .message {
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+      border-radius: 8px;
+      overflow-wrap: break-word;
+    }
+    
+    .user {
+      background-color: #dbeafe;
+      margin-left: 1rem;
+    }
+    
+    .bot {
+      background-color: #f3f4f6;
+      margin-right: 1rem;
+    }
+    
+    .tool {
+      background-color: #e0f2fe;
+      margin: 0.5rem 2rem;
+      border-left: 3px solid #0ea5e9;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    
+    .form-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: auto;
+    }
+    
+    input {
+      flex: 1;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    
+    button:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 0.5rem;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .session-controls {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    
+    .session-btn {
+      background-color: #f3f4f6;
+      color: #4b5563;
+      border: 1px solid #d1d5db;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 300px;
+      }
+      
+      .logs-container {
+        order: 2;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .main-container {
+        grid-template-rows: 1fr 250px;
+      }
+      
+      .logs-container {
+        padding: 0.5rem;
+      }
+      
+      #logs {
+        font-size: 0.7rem;
+      }
+    }
+    
+    /* Styling for markdown indhold */
+    .bot a {
+      color: #2563eb;
+      text-decoration: underline;
+    }
+    .bot a:hover {
+      text-decoration: none;
+    }
+    .bot ul, .bot ol {
+      margin-left: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .bot ul {
+      list-style-type: disc;
+    }
+    .bot ol {
+      list-style-type: decimal;
+    }
+    .bot h1, .bot h2, .bot h3 {
+      font-weight: bold;
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .bot h1 {
+      font-size: 1.5rem;
+    }
+    .bot h2 {
+      font-size: 1.25rem;
+    }
+    .bot h3 {
+      font-size: 1.125rem;
+    }
+    .bot pre, .bot code {
+      background-color: #f1f5f9;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-family: monospace;
+    }
+    .bot pre {
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Chat med Live Logs</h1>
+  <div class="subtitle">Session ID: <span id="session-id">Ikke forbundet</span></div>
+  
+  <div class="main-container">
+    <!-- Chat Section -->
+    <div class="chat-container">
+      <div id="chat">
+        <div class="message bot">
+          Hej! Jeg er klar til at hjælpe. Hvad vil du gerne tale om?
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <input type="text" id="message" placeholder="Skriv en besked..." autocomplete="off">
+        <button id="send">Send</button>
+      </div>
+      
+      <div class="session-controls">
+        <button id="new-session" class="session-btn">Ny samtale</button>
+        <button id="save-session" class="session-btn">Gem session</button>
+        <button id="share-session" class="session-btn">Del samtale</button>
+      </div>
+    </div>
+    
+    <!-- Logs Section -->
+    <div class="logs-container">
+      <div class="logs-header">
+        <span>🔍 Live Terminal Logs</span>
+        <div class="logs-controls">
+          <button id="auto-scroll" class="log-btn active">Auto-scroll</button>
+          <button id="clear-logs" class="log-btn">Ryd</button>
+          <button id="pause-logs" class="log-btn">Pause</button>
+        </div>
+      </div>
+      <div id="logs">
+        <div class="log-entry">
+          <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+          <span class="log-level-info">📡 Waiting for logs...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM elementer
+    const chatEl = document.getElementById('chat');
+    const messageEl = document.getElementById('message');
+    const sendBtn = document.getElementById('send');
+    const sessionIdEl = document.getElementById('session-id');
+    const newSessionBtn = document.getElementById('new-session');
+    const saveSessionBtn = document.getElementById('save-session');
+    const shareSessionBtn = document.getElementById('share-session');
+    
+    // Log elementer
+    const logsEl = document.getElementById('logs');
+    const autoScrollBtn = document.getElementById('auto-scroll');
+    const clearLogsBtn = document.getElementById('clear-logs');
+    const pauseLogsBtn = document.getElementById('pause-logs');
+    
+    // Konfiguration
+    const API_URL = ''; // Brug relative stier
+    
+    // State
+    let chatId = null;
+    let isLoading = false;
+    let autoScroll = true;
+    let logsPaused = false;
+    let logsEventSource = null;
+    
+    // Markdown konfiguration
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      headerIds: false,
+      mangle: false,
+      sanitize: false,
+    });
+    
+    // ===================
+    // LOGS FUNCTIONALITY
+    // ===================
+    
+    function initLogs() {
+      // Log controls
+      autoScrollBtn.addEventListener('click', toggleAutoScroll);
+      clearLogsBtn.addEventListener('click', clearLogs);
+      pauseLogsBtn.addEventListener('click', toggleLogsPause);
+      
+      // Start logs connection
+      connectToLogs();
+    }
+    
+    function connectToLogs() {
+      if (logsEventSource) {
+        logsEventSource.close();
+      }
+      
+      try {
+        logsEventSource = new EventSource(`${API_URL}/api/logs/stream`);
+        
+        logsEventSource.onopen = () => {
+          addLogEntry('Connected to log stream', 'success');
+        };
+        
+        logsEventSource.onmessage = (event) => {
+          if (!logsPaused) {
+            try {
+              const logData = JSON.parse(event.data);
+              addLogEntry(logData.message, logData.level || 'info', logData.timestamp);
+            } catch (e) {
+              // Fallback for plain text logs
+              addLogEntry(event.data, 'info');
+            }
+          }
+        };
+        
+        logsEventSource.onerror = (error) => {
+          addLogEntry('Log connection error - attempting reconnect...', 'error');
+          
+          // Reconnect after 3 seconds
+          setTimeout(() => {
+            if (!logsPaused) {
+              connectToLogs();
+            }
+          }, 3000);
+        };
+        
+      } catch (error) {
+        addLogEntry(`Failed to connect to logs: ${error.message}`, 'error');
+      }
+    }
+    
+    function addLogEntry(message, level = 'info', timestamp = null) {
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      
+      const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+      
+      // Format log entry with appropriate styling
+      logEntry.innerHTML = `
+        <span class="log-timestamp">[${time}]</span>
+        <span class="log-level-${level}">${formatLogMessage(message, level)}</span>
+      `;
+      
+      logsEl.appendChild(logEntry);
+      
+      // Limit logs to prevent memory issues
+      const maxLogs = 1000;
+      while (logsEl.children.length > maxLogs) {
+        logsEl.removeChild(logsEl.firstChild);
+      }
+      
+      // Auto scroll to bottom
+      if (autoScroll) {
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
+    }
+    
+    function formatLogMessage(message, level) {
+      const icons = {
+        info: '📝',
+        warn: '⚠️',
+        error: '❌',
+        success: '✅',
+        debug: '🔧'
+      };
+      
+      const icon = icons[level] || '📝';
+      return `${icon} ${message}`;
+    }
+    
+    function toggleAutoScroll() {
+      autoScroll = !autoScroll;
+      autoScrollBtn.textContent = autoScroll ? 'Auto-scroll' : 'Manual';
+      autoScrollBtn.classList.toggle('active', autoScroll);
+      
+      if (autoScroll) {
+        logsEl.scrollTop = logsEl.scrollHeight;
+      }
+    }
+    
+    function clearLogs() {
+      logsEl.innerHTML = `
+        <div class="log-entry">
+          <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span>
+          <span class="log-level-info">🧹 Logs cleared</span>
+        </div>
+      `;
+    }
+    
+    function toggleLogsPause() {
+      logsPaused = !logsPaused;
+      pauseLogsBtn.textContent = logsPaused ? 'Resume' : 'Pause';
+      pauseLogsBtn.classList.toggle('active', logsPaused);
+      
+      if (logsPaused) {
+        if (logsEventSource) {
+          logsEventSource.close();
+        }
+        addLogEntry('Log streaming paused', 'warn');
+      } else {
+        addLogEntry('Resuming log streaming...', 'info');
+        connectToLogs();
+      }
+    }
+    
+    // ===================
+    // EXISTING CHAT FUNCTIONALITY
+    // ===================
+    
+    // Initialiser
+    function init() {
+      messageEl.focus();
+      sendBtn.addEventListener('click', sendMessage);
+      messageEl.addEventListener('keypress', event => {
+        if (event.key === 'Enter') sendMessage();
+      });
+      
+      // Session håndtering
+      newSessionBtn.addEventListener('click', startNewSession);
+      saveSessionBtn.addEventListener('click', saveSessionToLocalStorage);
+      shareSessionBtn.addEventListener('click', shareSession);
+      
+      // Initialize logs
+      initLogs();
+      
+      // Forsøg at hente chatId fra URL eller localStorage
+      loadExistingSession();
+    }
+    
+    // Del session link
+    function shareSession() {
+      if (!chatId) {
+        alert("Der er ingen aktiv session at dele.");
+        return;
+      }
+      
+      const shareUrl = window.location.protocol + "//" + window.location.host + 
+                      window.location.pathname + `?chatId=${chatId}`;
+      
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          alert("Link til samtalen er kopieret til udklipsholder!");
+        })
+        .catch(err => {
+          console.error('Kunne ikke kopiere link:', err);
+          prompt("Kopier dette link for at dele samtalen:", shareUrl);
+        });
+    }
+    
+    // Load eksisterende session fra URL eller localStorage
+    async function loadExistingSession() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlChatId = urlParams.get('chatId');
+      const storedChatId = localStorage.getItem('chatId');
+      const existingChatId = urlChatId || storedChatId || null;
+      
+      if (existingChatId) {
+        chatId = existingChatId;
+        sessionIdEl.textContent = chatId;
+        
+        try {
+          const response = await fetch(`${API_URL}/api/session/${chatId}`);
+          const data = await response.json();
+          
+          if (data.success && data.hasHistory) {
+            addMessage(`Indlæst eksisterende session med ${data.messageCount} beskeder.`, 'bot');
+            await sendSystemMessage("Hent historik og fortsæt samtalen");
+          }
+        } catch (error) {
+          console.error("Fejl ved indlæsning af session:", error);
+        }
+      }
+    }
+    
+    // Start en helt ny session
+    function startNewSession() {
+      if (confirm("Er du sikker på, at du vil starte en ny samtale? Den nuværende samtale vil ikke blive gemt.")) {
+        chatId = null;
+        sessionIdEl.textContent = "Ikke forbundet";
+        
+        chatEl.innerHTML = `
+          <div class="message bot">
+            Hej! Jeg er klar til at hjælpe. Hvad vil du gerne tale om?
+          </div>
+        `;
+        
+        if (window.history.replaceState) {
+          const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.replaceState({ path: newUrl }, '', newUrl);
+        }
+        
+        localStorage.removeItem('chatId');
+      }
+    }
+    
+    // Gem session ID til localStorage og URL
+    function saveSessionToLocalStorage() {
+      if (!chatId) {
+        alert("Der er ingen aktiv session at gemme.");
+        return;
+      }
+      
+      localStorage.setItem('chatId', chatId);
+      
+      if (window.history.replaceState) {
+        const newUrl = window.location.protocol + "//" + window.location.host + 
+                       window.location.pathname + `?chatId=${chatId}`;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+      }
+      
+      alert(`Session ID ${chatId} er nu gemt. Du kan bruge dette link til at fortsætte samtalen senere.`);
+    }
+    
+    // Send besked
+    async function sendMessage() {
+      const message = messageEl.value.trim();
+      if (!message || isLoading) return;
+      
+      addMessage(message, 'user');
+      messageEl.value = '';
+      
+      isLoading = true;
+      updateUI();
+      
+      try {
+        const response = await fetch(`${API_URL}/api/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message,
+            chatId 
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API fejl: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('API svar:', data);
+        
+        let botResponse = '';
+        if (data.response) {
+          botResponse = data.response;
+        } else if (data.content) {
+          botResponse = data.content;
+        } else if (data.message && typeof data.message !== 'string') {
+          botResponse = 'Besked modtaget.';
+        } else {
+          botResponse = data.message || 'Jeg modtog din besked, men kunne ikke generere et svar.';
+        }
+        
+        if (data.chatId) {
+          chatId = data.chatId;
+          sessionIdEl.textContent = chatId;
+        }
+        
+        addMessage(botResponse, 'bot');
+        
+        if (data.toolCalls && data.toolCalls.length > 0) {
+          displayToolCalls(data.toolCalls);
+        }
+        
+      } catch (error) {
+        console.error('Fejl ved afsendelse af besked:', error);
+        addMessage(`Der opstod en fejl: ${error.message}`, 'bot');
+      } finally {
+        isLoading = false;
+        updateUI();
+      }
+    }
+    
+    // Send system besked (uden at vise i UI)
+    async function sendSystemMessage(message) {
+      try {
+        isLoading = true;
+        updateUI();
+        
+        const response = await fetch(`${API_URL}/api/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message,
+            chatId 
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API fejl: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('System message response:', data);
+        
+        if (data.success) {
+          displayChatHistory(data);
+          
+          if (data.chatId) {
+            chatId = data.chatId;
+            sessionIdEl.textContent = chatId;
+          }
+        }
+        
+      } catch (error) {
+        console.error('Fejl ved system besked:', error);
+      } finally {
+        isLoading = false;
+        updateUI();
+      }
+    }
+    
+    // Vis tool calls i chatten
+    function displayToolCalls(toolCalls) {
+      if (!toolCalls || !toolCalls.length) return;
+      
+      toolCalls.forEach(tool => {
+        const toolName = tool.name || 'Unknown Tool';
+        const toolArgs = JSON.stringify(tool.args || {}, null, 2);
+        const toolMessage = `🛠️ ${toolName}\n${toolArgs}`;
+        addMessage(toolMessage, 'tool');
+      });
+    }
+    
+    // Viser chat-historik baseret på svar fra serveren
+    function displayChatHistory(data) {
+      if (!data.response) return;
+      addMessage(data.response, 'bot');
+    }
+    
+    // Tilføj besked til chat
+    function addMessage(content, sender) {
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${sender}`;
+      
+      if (sender === 'bot') {
+        messageEl.innerHTML = marked.parse(content);
+        
+        messageEl.querySelectorAll('a').forEach(link => {
+          if (link.href && link.host !== window.location.host) {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+          }
+        });
+      } else {
+        messageEl.textContent = content;
+      }
+      
+      chatEl.appendChild(messageEl);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+    
+    // Opdater UI baseret på state
+    function updateUI() {
+      messageEl.disabled = isLoading;
+      sendBtn.disabled = isLoading;
+      
+      if (isLoading) {
+        sendBtn.innerHTML = `<span class="spinner"></span>Sender...`;
+      } else {
+        sendBtn.textContent = 'Send';
+      }
+    }
+    
+    // Cleanup ved siden close
+    window.addEventListener('beforeunload', () => {
+      if (logsEventSource) {
+        logsEventSource.close();
+      }
+    });
+    
+    // Start app
+    init();
+  </script>
+</body>
+</html>
