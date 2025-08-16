@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI Chat Rejseguide 🛫
 
-## Getting Started
+En intelligent dansk rejseguide chatbot bygget med **Claude AI**, **LangChain**, og **Node.js/Express**. Systemet hjælper brugere med at finde rejsetilbud og pakkerejser gennem naturlig samtale.
 
-First, run the development server:
+## ✨ Features
+
+- 🤖 **AI-powered rejseguide** med Claude Sonnet 4
+- 🛠️ **Værktøj integration** via wxflows (flyhotel, charterrejser, booking deals)
+- 💬 **Session management** - gem og genoptag samtaler
+- 📡 **Live terminal logs** - real-time development monitoring
+- 🔄 **Streaming responses** - AI svar i real-time
+- 📱 **Responsive design** - virker på desktop og mobile
+- 🇩🇰 **Dansk fokus** - optimeret til danske rejsebehov
+
+## 🚀 Screenshots
+
+### Chat Interface med Live Logs
+![Chat Interface](docs/screenshot-chat.png)
+
+### Værktøj Integration
+![Tool Integration](docs/screenshot-tools.png)
+
+## ⚡ Quick Start
+
+### Prerequisites
+- Node.js 18+
+- Anthropic API nøgle
+- wxflows API nøgle
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clone repository
+git clone https://github.com/DIT-BRUGERNAVN/ai-chat-rejseguide.git
+cd ai-chat-rejseguide
+
+# Install dependencies
+npm install
+
+# Opret .env fil
+cp .env.example .env
+# Rediger .env med dine API nøgler
+
+# Start server
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```env
+ANTHROPIC_API_KEY=your_anthropic_api_key
+WXFLOWS_ENDPOINT=your_wxflows_endpoint
+WXFLOWS_API_KEY=your_wxflows_api_key
+PORT=3000
+NODE_ENV=development
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📖 Brug
 
-## Learn More
+1. **Start serveren**: `npm start`
+2. **Åbn browser**: `http://localhost:3000`
+3. **Chat med AI'en**: Spørg om rejser til forskellige destinationer
+4. **Monitorér logs**: Se live terminal output i højre panel
 
-To learn more about Next.js, take a look at the following resources:
+### Eksempel samtaler
+- *"Jeg vil gerne til Barcelona i marts"*
+- *"Find mig en charterrejse til Thailand"*
+- *"Hvad koster det at flyve til New York?"*
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🏗️ Arkitektur
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+Frontend (HTML/JS) 
+    ↓ HTTP/SSE
+Express Server 
+    ↓ LangChain
+Claude AI + Tools 
+    ↓ API calls
+wxflows Rejse APIs
+```
 
-## Deploy on Vercel
+### Hovedkomponenter
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **AIService**: LangChain integration med Claude og værktøjer
+- **SessionManager**: In-memory chat historik management
+- **SystemMessage**: Intelligent rejseguide prompt engineering
+- **Log Streaming**: Real-time terminal logs via Server-Sent Events
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛠️ API Endpoints
+
+- `POST /api/chat` - Streaming/non-streaming chat
+- `POST /api/messages` - Simple message endpoint
+- `GET /api/session/:id` - Session info
+- `GET /api/logs/stream` - Live log streaming (SSE)
+
+## 📝 Development
+
+### Log Levels
+- `info` 📝 - General information
+- `warn` ⚠️ - Warnings
+- `error` ❌ - Errors
+- `success` ✅ - Successful operations
+- `debug` 🔧 - Debug information
+
+### Adding New Tools
+1. Registrer værktøj i wxflows
+2. Opdater system prompt med værktøj information
+3. Test værktøj integration
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Opret feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push til branch (`git push origin feature/amazing-feature`)
+5. Opret Pull Request
+
+## 📄 License
+
+MIT License - se [LICENSE](LICENSE) fil for detaljer.
+
+## 🙏 Acknowledgments
+
+- [Anthropic](https://anthropic.com) for Claude AI
+- [LangChain](https://langchain.com) for AI framework
+- [wxflows](https://wxflows.com) for rejse værktøjer
+- [rejsespejder.dk](https://rejsespejder.dk) for domain expertise
+
+## 📞 Support
